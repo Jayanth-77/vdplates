@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
-import { CartItem, CustomerOrder, StoreInfo } from '../types';
+import { CartItem, CustomerOrder, PaperPlate, StoreInfo } from '../types';
 
 interface OrderBookingModalProps {
   isOpen: boolean;
@@ -14,6 +14,8 @@ interface OrderBookingModalProps {
   cart: CartItem[];
   storeInfo: StoreInfo;
   onOrderSuccess: (order: CustomerOrder) => void;
+  onUpdateCartQuantity?: (plate: PaperPlate, quantity: number) => void;
+  onBrowseCatalog?: () => void;
 }
 
 export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
@@ -21,7 +23,9 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
   onClose,
   cart,
   storeInfo,
-  onOrderSuccess
+  onOrderSuccess,
+  onUpdateCartQuantity,
+  onBrowseCatalog
 }) => {
   // Step 1: Review & Details, Step 2: Payment Transfer & Screenshot, Step 3: Confirmation
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -70,12 +74,20 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
     }
   }, [step, isOpen]);
 
-  if (!isOpen) return null;
-
   const totalPlates = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.reduce((sum, item) => sum + item.quantity * item.plate.price, 0);
   const advanceRequired = Math.round((totalAmount * (advancePercent / 100)) * 100) / 100;
   const balanceOnDelivery = Math.round((totalAmount - advanceRequired) * 100) / 100;
+
+  // If customer drops plates below 400 while in subsequent steps, automatically return to Step 1
+  useEffect(() => {
+    if (totalPlates < 400 && step > 1) {
+      setStep(1);
+      setErrorMessage(`Cannot proceed: Minimum 400 plates required. Currently selected: ${totalPlates} plates.`);
+    }
+  }, [totalPlates, step]);
+
+  if (!isOpen) return null;
 
   // Validate 3 days notice
   const checkDateNoticeValid = (dateStr: string) => {
@@ -114,7 +126,7 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
   const handleProceedToPayment = () => {
     setErrorMessage('');
     if (totalPlates < 400) {
-      setErrorMessage(`Minimum order is 400 plates. You currently have ${totalPlates} plates. Please add more to proceed.`);
+      setErrorMessage(`Cannot order: You must select at least 400 plates to place an order. Currently selected: ${totalPlates} plates. Please add ${400 - totalPlates} more plates to proceed.`);
       return;
     }
     if (!customerName.trim()) {
@@ -143,6 +155,11 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
 
   const handleFinalSubmitOrder = async () => {
     setErrorMessage('');
+    if (totalPlates < 400) {
+      setErrorMessage(`Cannot place order: Minimum order is 400 plates. You have ${totalPlates} plates selected.`);
+      setStep(1);
+      return;
+    }
     if (!screenshotBase64 && !transactionRef.trim()) {
       setErrorMessage('Please provide your transaction reference/UTR number or upload the payment transfer screenshot.');
       return;
@@ -241,34 +258,89 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
                 <span>Selected Plates</span>
                 <span>Qty × Rate</span>
               </div>
-              <div className="divide-y divide-slate-200/80 mt-2 max-h-40 overflow-y-auto">
-                {cart.map((item) => (
-                  <div key={item.plate.id} className="py-2 flex items-center justify-between text-xs sm:text-sm">
-                    <div>
-                      <span className="font-semibold text-slate-900">{item.plate.name}</span>
-                      <span className="text-slate-500 text-xs block">
-                        ({item.plate.code.toUpperCase()} • ₹{item.plate.price.toFixed(2)} / pc)
-                      </span>
+
+              {cart.length === 0 ? (
+                <div className="py-6 px-4 text-center">
+                  <p className="text-xs sm:text-sm font-bold text-slate-700">
+                    No plates in cart yet.
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Direct factory booking requires at least <strong className="text-slate-900 font-bold">400 plates</strong> per order.
+                  </p>
+                  {onBrowseCatalog && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onBrowseCatalog();
+                      }}
+                      className="mt-3 px-4 py-2 rounded-full bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <span>Browse Catalog & Pick 400 Plates</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-200/80 mt-2 max-h-48 overflow-y-auto">
+                  {cart.map((item) => (
+                    <div key={item.plate.id} className="py-2.5 flex items-center justify-between gap-3 text-xs sm:text-sm">
+                      <div className="min-w-0 flex-1">
+                        <span className="font-semibold text-slate-900 block truncate">{item.plate.name}</span>
+                        <span className="text-slate-500 text-xs block">
+                          ({item.plate.code.toUpperCase()} • ₹{item.plate.price.toFixed(2)} / pc)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        {onUpdateCartQuantity && (
+                          <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => onUpdateCartQuantity(item.plate, Math.max(0, item.quantity - 50))}
+                              className="w-5 h-5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs cursor-pointer"
+                              title="Decrease by 50"
+                            >
+                              -
+                            </button>
+                            <span className="font-bold font-mono px-1 min-w-[36px] text-center text-slate-900 text-xs">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateCartQuantity(item.plate, item.quantity + 50)}
+                              className="w-5 h-5 rounded bg-emerald-100 hover:bg-emerald-200 text-[#14532d] font-bold flex items-center justify-center text-xs cursor-pointer"
+                              title="Increase by 50"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                        {!onUpdateCartQuantity && (
+                          <span className="font-bold text-slate-900 font-mono">
+                            {item.quantity} pcs
+                          </span>
+                        )}
+                        <span className="text-amber-700 font-bold text-xs min-w-[65px] text-right">
+                          ₹{(item.quantity * item.plate.price).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="font-bold text-slate-900">
-                        {item.quantity} pcs
-                      </span>
-                      <span className="text-amber-700 font-bold block text-xs">
-                        ₹{(item.quantity * item.plate.price).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Total plates validation bar */}
               <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
                 <div className="text-xs">
                   <span className="text-slate-600">Total Plates: </span>
-                  <strong className={totalPlates >= 400 ? 'text-amber-700' : 'text-red-600'}>
+                  <strong className={totalPlates >= 400 ? 'text-[#15803d] font-black' : 'text-red-600 font-black'}>
                     {totalPlates} / 400 min
                   </strong>
+                  {totalPlates < 400 && (
+                    <span className="text-red-500 font-bold ml-1 text-[11px]">
+                      (Need {400 - totalPlates} more)
+                    </span>
+                  )}
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-slate-500 block">Total Order Value:</span>
@@ -278,9 +350,37 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
                 </div>
               </div>
 
-              {totalPlates < 400 && (
-                <div className="mt-2 text-[11px] font-semibold text-amber-900 bg-amber-50 p-2.5 rounded-lg border border-amber-300">
-                  ⚠️ Minimum order is 400 plates. Please adjust plate quantities in the catalog to proceed.
+              {/* 400 Plates Notice / Autofill */}
+              {totalPlates < 400 ? (
+                <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2">
+                    <ShieldAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-xs font-black text-red-900 block">
+                        Cannot Order: Minimum 400 Plates Required
+                      </span>
+                      <span className="text-[11px] text-red-700">
+                        Under factory booking policy, orders with fewer than 400 plates cannot be placed. Please add at least <strong>{400 - totalPlates} more plates</strong>.
+                      </span>
+                    </div>
+                  </div>
+                  {onUpdateCartQuantity && cart.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const firstItem = cart[0];
+                        onUpdateCartQuantity(firstItem.plate, firstItem.quantity + (400 - totalPlates));
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shrink-0 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      + Add {400 - totalPlates} to Reach 400
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-2.5 p-2 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center gap-2 text-xs font-semibold text-[#166534]">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Minimum 400 plates requirement fulfilled ({totalPlates} plates in order). You can proceed!</span>
                 </div>
               )}
             </div>
@@ -390,14 +490,23 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
                 id="booking-next-to-payment-btn"
                 onClick={handleProceedToPayment}
                 disabled={totalPlates < 400}
-                className={`w-full py-3.5 px-6 rounded-2xl font-black text-sm shadow-pill-green flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                className={`w-full py-3.5 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all ${
                   totalPlates >= 400
-                    ? 'bg-[#15803d] hover:bg-[#166534] text-white hover:scale-102 active:scale-98'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'bg-[#15803d] hover:bg-[#166534] text-white shadow-pill-green hover:scale-102 active:scale-98 cursor-pointer'
+                    : 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300'
                 }`}
               >
-                Proceed to 20% Advance Payment Transfer
-                <ArrowRight className="w-4 h-4" />
+                {totalPlates >= 400 ? (
+                  <>
+                    <span>Proceed to 20% Advance Payment Transfer</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                ) : (
+                  <>
+                    <ShieldAlert className="w-4 h-4 text-red-500 shrink-0" />
+                    <span>Cannot Order: Must Select At Least 400 Plates ({totalPlates}/400 pcs)</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

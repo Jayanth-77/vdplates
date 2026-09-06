@@ -216,18 +216,18 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
                     <button
                       id={`add-min-btn-${plate.id}`}
                       onClick={() => onUpdateCartQuantity(plate, 400)}
-                      className="flex-1 py-3 px-5 rounded-full bg-[#15803d] hover:bg-[#166534] text-white text-xs sm:text-sm font-bold shadow-pill-green hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      className="flex-1 py-3 px-4 rounded-full bg-[#15803d] hover:bg-[#166534] text-white text-xs sm:text-sm font-bold shadow-pill-green hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span>Order Now</span>
+                      <span>Order 400 Plates (Min)</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                     <button
                       id={`add-custom-btn-${plate.id}`}
-                      onClick={() => onUpdateCartQuantity(plate, 100)}
-                      className="py-3 px-3.5 rounded-full bg-white hover:bg-emerald-50 text-[#14532d] text-xs font-bold border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
-                      title="Add 100 plates"
+                      onClick={() => onUpdateCartQuantity(plate, 200)}
+                      className="py-3 px-3 rounded-full bg-white hover:bg-emerald-50 text-[#14532d] text-xs font-bold border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
+                      title="Add 200 plates (combine with other plates to reach 400 total)"
                     >
-                      +100
+                      +200
                     </button>
                   </div>
                 ) : (
@@ -269,14 +269,16 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
                         <button
                           onClick={() => onUpdateCartQuantity(plate, 200)}
                           className="px-2 py-0.5 rounded-full bg-white/80 hover:bg-white text-[#14532d] font-bold border border-emerald-100"
+                          title="Combine 200 with another plate to reach 400"
                         >
                           200
                         </button>
                         <button
                           onClick={() => onUpdateCartQuantity(plate, 400)}
-                          className="px-2 py-0.5 rounded-full bg-white/80 hover:bg-white text-[#14532d] font-bold border border-emerald-100"
+                          className="px-2.5 py-0.5 rounded-full bg-emerald-100 hover:bg-emerald-200 text-[#14532d] font-bold border border-emerald-300"
+                          title="400 Minimum Batch"
                         >
-                          400
+                          400 (Min)
                         </button>
                         <button
                           onClick={() => onUpdateCartQuantity(plate, 1000)}
@@ -298,7 +300,9 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
       {totalCartPlates > 0 && (
         <div className="fixed bottom-5 left-4 right-4 max-w-3xl mx-auto z-40 bg-[#143820] text-white p-4 rounded-3xl sm:rounded-full shadow-2xl border-2 border-[#16a34a] flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-5">
           <div className="flex items-center gap-3.5 pl-2">
-            <div className="w-11 h-11 rounded-full bg-[#16a34a] text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold shrink-0 shadow-xs ${
+              totalCartPlates >= 400 ? 'bg-[#16a34a] text-white' : 'bg-amber-500 text-slate-950'
+            }`}>
               <ShoppingCart className="w-5 h-5" />
             </div>
             <div>
@@ -311,25 +315,55 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
                     Min 400 Met ✓
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
-                    Need {400 - totalCartPlates} more
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white uppercase">
+                    Cannot Order: Need {400 - totalCartPlates} more
                   </span>
                 )}
               </div>
               <p className="text-xs text-emerald-200">
-                Total: <strong className="text-white">₹{totalCartAmount.toFixed(2)}</strong> • 20% Min Advance: <strong className="text-amber-300">₹{minAdvanceRequired.toFixed(2)}</strong>
+                Total: <strong className="text-white">₹{totalCartAmount.toFixed(2)}</strong>
+                {totalCartPlates >= 400 ? (
+                  <> • 20% Min Advance: <strong className="text-amber-300">₹{minAdvanceRequired.toFixed(2)}</strong></>
+                ) : (
+                  <> • <span className="text-amber-300 font-semibold">Select 400 plates to enable ordering</span></>
+                )}
               </p>
             </div>
           </div>
 
-          <button
-            id="floating-checkout-btn"
-            onClick={onOpenOrderModal}
-            className="w-full sm:w-auto px-7 py-3 rounded-full bg-[#22c55e] hover:bg-[#16a34a] text-[#052e16] hover:text-white font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-          >
-            <span>{totalCartPlates >= 400 ? 'Proceed to Advance Booking' : 'Review & Add Plates'}</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {totalCartPlates < 400 && cart.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const last = cart[cart.length - 1];
+                  onUpdateCartQuantity(last.plate, last.quantity + (400 - totalCartPlates));
+                }}
+                className="px-3.5 py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                title="Quickly fill remaining plates to reach 400 minimum"
+              >
+                + Fill to 400
+              </button>
+            )}
+
+            <button
+              id="floating-checkout-btn"
+              onClick={() => {
+                if (totalCartPlates < 400) return;
+                onOpenOrderModal();
+              }}
+              disabled={totalCartPlates < 400}
+              className={`w-full sm:w-auto px-6 py-3 rounded-full font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                totalCartPlates >= 400
+                  ? 'bg-[#22c55e] hover:bg-[#16a34a] text-[#052e16] hover:text-white cursor-pointer active:scale-95'
+                  : 'bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600'
+              }`}
+              title={totalCartPlates < 400 ? 'Minimum 400 plates required before you can order' : 'Proceed to order booking'}
+            >
+              <span>{totalCartPlates >= 400 ? 'Proceed to Advance Booking' : `Min 400 Required (${totalCartPlates}/400)`}</span>
+              {totalCartPlates >= 400 && <ChevronRight className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       )}
 

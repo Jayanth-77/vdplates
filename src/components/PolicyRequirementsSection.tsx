@@ -66,10 +66,10 @@ export const PolicyRequirementsSection: React.FC<PolicyRequirementsSectionProps>
                 </div>
               </div>
               <h3 className="mt-4 text-xl font-extrabold text-[#143820] font-['Outfit']">
-                400 Plates Per Order
+                400 Plates Minimum Order
               </h3>
               <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                To guarantee direct factory rates starting from <strong className="text-[#143820]">₹0.90/plate</strong>, our minimum booking requirement is <strong className="text-[#143820]">400 plates</strong> total. You can freely mix and match any square, round, or snack plate varieties.
+                To guarantee direct wholesale factory rates, our strict requirement is <strong className="text-[#143820]">at least 400 plates per order</strong>. If a customer does not select 400 plates, the system will not allow the order to be placed. You can freely combine any sizes and patterns to reach 400.
               </p>
             </div>
             <div className="mt-6 pt-4 border-t border-emerald-200/60 flex items-center justify-between text-xs">

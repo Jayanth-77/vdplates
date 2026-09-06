@@ -472,7 +472,7 @@ app.post('/api/orders', (req, res) => {
     const totalPlates = items.reduce((sum: number, item: OrderItem) => sum + Number(item.quantity || 0), 0);
     if (totalPlates < BANK_DETAILS.minPlates) {
       return res.status(400).json({
-        error: `Minimum order quantity is ${BANK_DETAILS.minPlates} plates. You currently have ${totalPlates} plates in total.`
+        error: `Cannot place order: Minimum order quantity is ${BANK_DETAILS.minPlates} plates. You currently have ${totalPlates} plates in total. Customer must select at least 400 plates to order.`
       });
     }
 

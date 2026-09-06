@@ -305,6 +305,8 @@ export default function App() {
         cart={cart}
         storeInfo={storeInfo}
         onOrderSuccess={handleOrderSuccess}
+        onUpdateCartQuantity={handleUpdateCartQuantity}
+        onBrowseCatalog={scrollToCatalog}
       />
 
       {/* 2. Gemini AI Customer Support Chatbot */}
