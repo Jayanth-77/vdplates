@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <radialGradient id="p3-rim-shadow" cx="50%" cy="50%" r="50%">
+      <stop offset="60%" stopColor="#000000" stopOpacity="0" />
+      <stop offset="85%" stopColor="#78350f" stopOpacity="0.4" />
+      <stop offset="100%" stopColor="#451a03" stopOpacity="0.75" />
+    </radialGradient>
+    <linearGradient id="p3-glaze" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
+      <stop offset="35%" stopColor="#ffffff" stopOpacity="0.05" />
+      <stop offset="70%" stopColor="#000000" stopOpacity="0.1" />
+      <stop offset="100%" stopColor="#ffffff" stopOpacity="0.2" />
+    </linearGradient>
+    <pattern id="golden-leaf-pattern" width="120" height="120" patternUnits="userSpaceOnUse">
+      <rect width="120" height="120" fill="#eab308"/>
+      <!-- Golden leaf arc -->
+      <path d="M10 60 Q 60 10 110 60 Q 60 110 10 60 Z" fill="#ca8a04" stroke="#854d0e" stroke-width="2"/>
+      <path d="M10 60 L110 60" stroke="#713f12" stroke-width="2"/>
+      <path d="M40 60 Q 55 35 75 40 M40 60 Q 55 85 75 80" stroke="#713f12" stroke-width="1.5" fill="none"/>
+      <path d="M70 60 Q 80 45 95 48 M70 60 Q 80 75 95 72" stroke="#713f12" stroke-width="1.5" fill="none"/>
+    </pattern>
+  </defs>
+  <rect x="30" y="30" width="440" height="440" rx="55" fill="url(#golden-leaf-pattern)" stroke="#854d0e" stroke-width="4"/>
+  <rect x="30" y="30" width="440" height="440" rx="55" fill="url(#p3-rim-shadow)"/>
+  <rect x="85" y="85" width="330" height="330" rx="35" fill="url(#golden-leaf-pattern)"/>
+  <rect x="85" y="85" width="330" height="330" rx="35" fill="none" stroke="#713f12" stroke-width="3" opacity="0.5"/>
+  <rect x="87" y="87" width="326" height="326" rx="33" fill="none" stroke="#fef08a" stroke-width="2" opacity="0.6"/>
+  <rect x="30" y="30" width="440" height="440" rx="55" fill="url(#p3-glaze)"/>
+</svg>

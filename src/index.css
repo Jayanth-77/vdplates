@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1.5deg);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(-2deg);
+  }
+}
+
+@keyframes leaf-sway {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(4deg) scale(1.03);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 7s ease-in-out infinite;
+}
+
+.animate-leaf-sway {
+  animation: leaf-sway 5s ease-in-out infinite;
+}
+
+/* 3D shadows and eco-friendly surfaces */
+.shadow-plate-3d {
+  box-shadow: 0 20px 35px -10px rgba(19, 78, 41, 0.15), 0 10px 15px -5px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-card-soft {
+  box-shadow: 0 10px 30px -5px rgba(22, 101, 52, 0.06), 0 4px 10px -2px rgba(0, 0, 0, 0.03);
+}
+
+.shadow-card-hover {
+  box-shadow: 0 22px 40px -10px rgba(22, 101, 52, 0.14), 0 10px 18px -4px rgba(0, 0, 0, 0.06);
+}
+
+.shadow-pill-green {
+  box-shadow: 0 8px 20px -4px rgba(22, 163, 74, 0.35);
+}
+
+/* Custom scrollbar matching forest green */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #fdfbf7;
+}
+::-webkit-scrollbar-thumb {
+  background: #86efac;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #22c55e;
+}
