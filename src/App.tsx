@@ -276,7 +276,10 @@ export default function App() {
         </section>
 
         {/* Location, Contact Numbers & Bank Details */}
-        <LocationAndContactSection storeInfo={storeInfo} />
+        <LocationAndContactSection
+          storeInfo={storeInfo}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+        />
       </main>
 
       {/* The Single Official AI Customer Assistant Trigger */}

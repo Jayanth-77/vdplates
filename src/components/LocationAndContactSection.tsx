@@ -5,9 +5,15 @@ import { StoreInfo } from '../types';
 
 interface LocationAndContactSectionProps {
   storeInfo: StoreInfo;
+  onOpenAdmin?: () => void;
+  isAdmin?: boolean;
 }
 
-export const LocationAndContactSection: React.FC<LocationAndContactSectionProps> = ({ storeInfo }) => {
+export const LocationAndContactSection: React.FC<LocationAndContactSectionProps> = ({
+  storeInfo,
+  onOpenAdmin,
+  isAdmin
+}) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const copyToClipboard = (text: string, key: string) => {
@@ -317,6 +323,21 @@ export const LocationAndContactSection: React.FC<LocationAndContactSectionProps>
             <span>Call: <strong className="text-white">7382468841</strong></span>
             <span>•</span>
             <span>Metturu Bit-2 Road 4 Opposite</span>
+            {onOpenAdmin && (
+              <>
+                <span>•</span>
+                <button
+                  id="footer-admin-btn"
+                  type="button"
+                  onClick={onOpenAdmin}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-[#144223] hover:bg-[#1b552e] text-emerald-200 hover:text-white border border-emerald-600/50 transition-all cursor-pointer shadow-xs active:scale-95 ml-1"
+                  title="Factory Administrator Portal"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#22c55e]" />
+                  <span>Admin Portal</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

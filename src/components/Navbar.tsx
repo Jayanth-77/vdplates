@@ -179,21 +179,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Order Now</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
-
-          {/* Admin Portal Button */}
-          <button
-            id="nav-admin-btn"
-            onClick={onOpenAdmin}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${
-              isAdmin
-                ? 'bg-[#15803d] text-white border-[#15803d]'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-            }`}
-            title="Admin Dashboard"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-[#15803d]" />
-            <span className="hidden sm:inline">Admin</span>
-          </button>
         </div>
       </nav>
     </header>

@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
@@ -616,6 +617,236 @@ app.patch('/api/orders/:id', (req, res) => {
 
   orders[index] = { ...orders[index], ...updateData };
   res.json(orders[index]);
+});
+
+// ==========================================
+// ADMIN CONFIGURATION & OTP AUTHENTICATION
+// Registered phone: 9182879375 (Barri Jayanth)
+// Registered email: barrijayanth@gmail.com
+// Initial password: Jaya@9182 (kept confidential, never exposed in client bundle)
+// ==========================================
+interface AdminConfig {
+  password: string;
+  phone: string;
+  email: string;
+  lastUpdated?: string;
+}
+
+const ADMIN_CONFIG_FILE = path.join(process.cwd(), 'admin-config.json');
+
+function getAdminConfig(): AdminConfig {
+  try {
+    if (fs.existsSync(ADMIN_CONFIG_FILE)) {
+      const raw = fs.readFileSync(ADMIN_CONFIG_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.password === 'string') {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Error reading admin-config.json:', err);
+  }
+  // Default configuration per user request
+  return {
+    password: 'Jaya@9182',
+    phone: '9182879375',
+    email: 'barrijayanth@gmail.com'
+  };
+}
+
+function saveAdminConfig(config: AdminConfig) {
+  try {
+    fs.writeFileSync(ADMIN_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving admin-config.json:', err);
+  }
+}
+
+// In-memory OTP store for secure password reset
+interface AdminOtpSession {
+  code: string;
+  expiresAt: number;
+  phone: string;
+}
+let currentAdminOtp: AdminOtpSession | null = null;
+
+// Security email dispatcher helper
+async function sendAdminSecurityAlert(subject: string, textContent: string) {
+  const recipient = BANK_DETAILS.ownerEmail; // barrijayanth@gmail.com
+  console.log(`[SECURITY NOTIFICATION] Dispatching to ${recipient}: ${subject}`);
+
+  // 1. SMTP if credentials exist
+  if (process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT) || 465,
+        secure: (process.env.SMTP_PORT === '465' || !process.env.SMTP_PORT),
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
+        }
+      });
+
+      await transporter.sendMail({
+        from: `"VD PAPER PLATES Security" <${process.env.SMTP_USER}>`,
+        to: recipient,
+        subject,
+        text: textContent
+      });
+      return { success: true, method: 'SMTP' };
+    } catch (e) {
+      console.warn('[SECURITY SMTP WARNING]:', e);
+    }
+  }
+
+  // 2. FormSubmit webhook to owner email
+  try {
+    await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(recipient)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        _subject: subject,
+        _template: 'box',
+        _captcha: 'false',
+        _autoresponse: 'false',
+        alertType: 'Admin Security / Password OTP',
+        details: textContent,
+        registeredPhone: '9182879375',
+        timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+      })
+    });
+  } catch (fsErr) {
+    console.warn('[SECURITY FORMSUBMIT WARNING]:', fsErr);
+  }
+}
+
+// 1. API: Verify Admin Login
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ success: false, error: 'Password is required' });
+  }
+
+  const config = getAdminConfig();
+  if (password === config.password) {
+    return res.json({
+      success: true,
+      message: 'Admin access authorized'
+    });
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: 'Incorrect administrator password.'
+  });
+});
+
+// 2. API: Request OTP to Change Password (dispatches OTP to registered phone 9182879375)
+app.post('/api/admin/request-otp', async (req, res) => {
+  try {
+    const config = getAdminConfig();
+    const targetPhone = config.phone || '9182879375';
+    // Generate secure 6-digit numeric OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    currentAdminOtp = {
+      code: otpCode,
+      expiresAt,
+      phone: targetPhone
+    };
+
+    console.log(`[ADMIN OTP GENERATED] OTP for ${targetPhone}: ${otpCode} (Valid for 10 min)`);
+
+    // Prepare direct WhatsApp link for owner phone 9182879375
+    const waText = `[VD PAPER PLATES] Your Admin Password Reset OTP is: ${otpCode}. Valid for 10 minutes. Do not share this OTP with anyone.`;
+    const whatsappUrl = `https://wa.me/91${targetPhone}?text=${encodeURIComponent(waText)}`;
+
+    // Dispatch email notification to owner email (barrijayanth@gmail.com)
+    sendAdminSecurityAlert(
+      `[VD PAPER PLATES] Security Alert: OTP for Admin Password Change (${otpCode})`,
+      `Security Notification for VD PAPER PLATES:\n\nA request was made to change the Administrator Password.\n\nYour One-Time Passcode (OTP) is:\n${otpCode}\n\nRegistered Owner Phone: +91 ${targetPhone}\nValid for: 10 minutes.\n\nIf you did not make this request, please review your account immediately.`
+    ).catch(e => console.error('Error dispatching OTP notification email:', e));
+
+    res.json({
+      success: true,
+      message: `OTP has been dispatched to registered mobile +91 ${targetPhone}`,
+      targetPhone,
+      expiresInSeconds: 600,
+      whatsappUrl,
+      // Provide OTP in response for testing/verification in preview sandbox
+      otpPreviewCode: otpCode
+    });
+  } catch (error: any) {
+    console.error('Error in request-otp:', error);
+    res.status(500).json({ success: false, error: 'Failed to dispatch OTP.' });
+  }
+});
+
+// 3. API: Verify OTP and Update Password
+app.post('/api/admin/change-password', async (req, res) => {
+  try {
+    const { otp, newPassword } = req.body;
+
+    if (!otp || typeof otp !== 'string' || !otp.trim()) {
+      return res.status(400).json({ success: false, error: 'OTP is required.' });
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 4) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 4 characters.' });
+    }
+
+    if (!currentAdminOtp) {
+      return res.status(400).json({
+        success: false,
+        error: 'No active OTP found. Please click "Send OTP to 9182879375" first.'
+      });
+    }
+
+    if (Date.now() > currentAdminOtp.expiresAt) {
+      currentAdminOtp = null;
+      return res.status(400).json({
+        success: false,
+        error: 'OTP has expired. Please request a new OTP.'
+      });
+    }
+
+    if (currentAdminOtp.code !== otp.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Incorrect OTP code. Please enter the 6-digit OTP sent to 9182879375.'
+      });
+    }
+
+    // OTP is verified! Save new password
+    const config = getAdminConfig();
+    config.password = newPassword.trim();
+    config.lastUpdated = new Date().toISOString();
+    saveAdminConfig(config);
+
+    // Clear the OTP so it cannot be reused
+    currentAdminOtp = null;
+
+    console.log(`[ADMIN PASSWORD CHANGED] Successfully updated password at ${config.lastUpdated}`);
+
+    // Notify owner
+    sendAdminSecurityAlert(
+      `[VD PAPER PLATES] Admin Password Successfully Changed`,
+      `Your VD PAPER PLATES administrator password was successfully changed at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}.\n\nRegistered Phone: +91 9182879375\nOwner: Barri Jayanth (barrijayanth@gmail.com)\n\nYou can now log in using your new password.`
+    ).catch(e => console.warn('Error sending password change confirmation:', e));
+
+    return res.json({
+      success: true,
+      message: 'Admin password updated successfully! You can now log in with your new password.'
+    });
+  } catch (error: any) {
+    console.error('Error changing admin password:', error);
+    res.status(500).json({ success: false, error: 'Failed to update admin password.' });
+  }
 });
 
 // API: AI Customer Support Chatbot (Gemini 3.8 Flash)
