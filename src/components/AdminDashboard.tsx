@@ -3,7 +3,7 @@ import {
   ShieldCheck, X, Plus, Edit2, Trash2, Eye, EyeOff, CheckCircle,
   Clock, CheckCircle2, Phone, Mail, FileText, Image as ImageIcon,
   DollarSign, Package, Lock, Unlock, Upload, MessageCircle,
-  Ban, AlertTriangle, Key, RefreshCw, ArrowLeft
+  Ban, AlertTriangle, Key, RefreshCw, ArrowLeft, Camera
 } from 'lucide-react';
 import { PaperPlate, CustomerOrder, StoreInfo } from '../types';
 import { PlateVisual } from './PlateVisual';
@@ -18,6 +18,7 @@ interface AdminDashboardProps {
   onUpdatePlate: (id: string, updatedPlate: Partial<PaperPlate>) => void;
   onDeletePlate: (id: string) => void;
   onUpdateOrderStatus: (orderId: string, newStatus: CustomerOrder['status'], notes?: string, cancellationReason?: string) => void;
+  onUploadPlatePhoto?: (plateId: string, imageBase64: string, fileName?: string) => Promise<boolean>;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -29,7 +30,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onAddPlate,
   onUpdatePlate,
   onDeletePlate,
-  onUpdateOrderStatus
+  onUpdateOrderStatus,
+  onUploadPlatePhoto
 }) => {
   // Admin authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -47,11 +49,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [otpSentNotice, setOtpSentNotice] = useState<string | null>(null);
+  const [receivedOtpCode, setReceivedOtpCode] = useState<string | null>(null);
   const [otpError, setOtpError] = useState('');
   const [changePasswordSuccess, setChangePasswordSuccess] = useState<string | null>(null);
   const [otpWhatsAppUrl, setOtpWhatsAppUrl] = useState<string | null>(null);
   const [otpCountdown, setOtpCountdown] = useState<number>(0);
-  const [sandboxOtpPreview, setSandboxOtpPreview] = useState<string | null>(null);
+  const [authSuccessNotice, setAuthSuccessNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (otpCountdown <= 0) return;
@@ -67,6 +70,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Modal for adding/editing a plate
   const [isAddPlateModalOpen, setIsAddPlateModalOpen] = useState(false);
   const [editingPlate, setEditingPlate] = useState<PaperPlate | null>(null);
+  const [uploadingPlateId, setUploadingPlateId] = useState<string | null>(null);
 
   // New plate form state
   const [plateForm, setPlateForm] = useState({
@@ -186,9 +190,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setOtpSentNotice(data.message || 'OTP dispatched to registered mobile +91 9182879375');
+        setOtpSentNotice(data.message || 'OTP dispatched for registered mobile +91 9182879375');
         setOtpWhatsAppUrl(data.whatsappUrl || null);
-        setSandboxOtpPreview(data.otpPreviewCode || null);
+        if (data.otpCode) {
+          setReceivedOtpCode(data.otpCode);
+          setOtpCode(data.otpCode); // Pre-fill directly so user has zero typing hassle
+        }
         setOtpCountdown(60);
       } else {
         setOtpError(data.error || 'Failed to dispatch OTP. Please retry.');
@@ -198,6 +205,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     } finally {
       setIsSendingOtp(false);
     }
+  };
+
+  const handleReturnAfterPasswordChange = () => {
+    setReceivedOtpCode(null);
+    if (isAuthenticated) {
+      setActiveTab('orders');
+    } else {
+      setIsChangePasswordView(false);
+      setPasscode('');
+      setAuthError('');
+      setAuthSuccessNotice('Password successfully updated! Please log in with your new password below.');
+    }
+    setChangePasswordSuccess(null);
   };
 
   const handleVerifyOtpAndChangePassword = async (e: React.FormEvent) => {
@@ -232,12 +252,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setChangePasswordSuccess('Administrator password updated successfully! Keep your new password secure.');
+        setChangePasswordSuccess('Administrator password updated successfully! Redirecting back in 2 seconds...');
         setOtpCode('');
         setNewPassword('');
         setConfirmPassword('');
         setOtpSentNotice(null);
-        setSandboxOtpPreview(null);
+
+        // Automatically return the user back to the login screen or orders dashboard
+        setTimeout(() => {
+          handleReturnAfterPasswordChange();
+        }, 1900);
       } else {
         setOtpError(data.error || 'Failed to update password. Please check your OTP.');
       }
@@ -321,7 +345,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95">
+      <div className={`bg-white w-full ${!isAuthenticated ? 'max-w-xl' : 'max-w-5xl'} rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95`}>
         {/* Top Header */}
         <div className="bg-slate-900 text-white p-5 flex items-center justify-between shrink-0 border-b-2 border-amber-500">
           <div className="flex items-center gap-3">
@@ -353,246 +377,296 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* AUTHENTICATION GATE */}
         {!isAuthenticated ? (
-          !isChangePasswordView ? (
-            /* SECURE LOGIN VIEW - Password strictly hidden, no hints shown */
-            <div className="p-6 sm:p-8 max-w-md mx-auto text-center space-y-4 my-auto">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-[#15803d] flex items-center justify-center mx-auto border border-emerald-300 shadow-sm">
-                <Lock className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">
-                VD Factory Administrator Access
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600">
-                Please enter your confidential administrator password to access customer bookings, production queues, and product settings.
-              </p>
+          <div className="flex-1 overflow-y-auto w-full p-4 sm:p-6 flex flex-col min-h-0">
+            {!isChangePasswordView ? (
+              /* SECURE LOGIN VIEW - Password strictly hidden, no hints shown */
+              <div className="p-4 sm:p-6 max-w-md mx-auto text-center space-y-4 m-auto w-full">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-[#15803d] flex items-center justify-center mx-auto border border-emerald-300 shadow-sm">
+                  <Lock className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">
+                  VD Factory Administrator Access
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600">
+                  Please enter your confidential administrator password to access customer bookings, production queues, and product settings.
+                </p>
 
-              <form onSubmit={handleLogin} className="space-y-3 pt-2 text-left">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Admin Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="admin-password-input"
-                      type={showPasscode ? "text" : "password"}
-                      placeholder="Enter administrator password"
-                      value={passcode}
-                      onChange={(e) => setPasscode(e.target.value)}
-                      className="w-full pl-4 pr-11 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-mono tracking-wider focus:bg-white focus:outline-[#15803d] shadow-2xs"
-                      autoComplete="current-password"
-                    />
+                <form onSubmit={handleLogin} className="space-y-3 pt-2 text-left">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Admin Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="admin-password-input"
+                        type={showPasscode ? "text" : "password"}
+                        placeholder="Enter administrator password"
+                        value={passcode}
+                        onChange={(e) => setPasscode(e.target.value)}
+                        className="w-full pl-4 pr-11 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm font-mono tracking-wider focus:bg-white focus:outline-[#15803d] shadow-2xs"
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasscode(!showPasscode)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                        title={showPasscode ? "Hide password" : "Show password"}
+                      >
+                        {showPasscode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {authSuccessNotice && (
+                    <div className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 p-2.5 rounded-lg font-semibold flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+                      <span>{authSuccessNotice}</span>
+                    </div>
+                  )}
+
+                  {authError && (
+                    <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg font-semibold flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>{authError}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isVerifyingLogin}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+                  >
+                    {isVerifyingLogin ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Verifying Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Unlock className="w-4 h-4" />
+                        <span>Unlock Dashboard</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-3 border-t border-slate-200 text-center">
                     <button
                       type="button"
-                      onClick={() => setShowPasscode(!showPasscode)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
-                      title={showPasscode ? "Hide password" : "Show password"}
+                      onClick={() => {
+                        setIsChangePasswordView(true);
+                        setAuthError('');
+                        setAuthSuccessNotice(null);
+                        setOtpError('');
+                        setChangePasswordSuccess(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#15803d] hover:text-[#166534] hover:underline cursor-pointer"
                     >
-                      {showPasscode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <Key className="w-3.5 h-3.5" />
+                      <span>Change Password Anytime (OTP to 9182879375)</span>
                     </button>
                   </div>
-                </div>
-
-                {authError && (
-                  <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg font-semibold flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                    <span>{authError}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isVerifyingLogin}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-                >
-                  {isVerifyingLogin ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Verifying Password...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Unlock className="w-4 h-4" />
-                      <span>Unlock Dashboard</span>
-                    </>
-                  )}
-                </button>
-
-                <div className="pt-3 border-t border-slate-200 text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsChangePasswordView(true);
-                      setAuthError('');
-                      setOtpError('');
-                      setChangePasswordSuccess(null);
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#15803d] hover:text-[#166534] hover:underline cursor-pointer"
-                  >
-                    <Key className="w-3.5 h-3.5" />
-                    <span>Change Password Anytime (OTP to 9182879375)</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          ) : (
-            /* CHANGE PASSWORD VIA OTP VIEW (Triggered from Login Screen) */
-            <div className="p-6 sm:p-8 max-w-md mx-auto text-center space-y-4 my-auto">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-[#15803d] flex items-center justify-center mx-auto border border-emerald-300 shadow-sm">
-                <Key className="w-7 h-7" />
+                </form>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">
-                Change Admin Password
-              </h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Verification OTP will be dispatched exclusively to the registered factory owner mobile: <strong className="text-slate-900 font-bold">+91 9182879375</strong>.
-              </p>
-
-              {/* OTP Dispatch Box */}
-              <div className="bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200 text-left space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-[#15803d]" />
-                    Mobile: +91 9182879375
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleRequestOtp}
-                    disabled={isSendingOtp || otpCountdown > 0}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      otpCountdown > 0
-                        ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                        : 'bg-[#15803d] text-white hover:bg-[#166534] shadow-xs active:scale-95'
-                    }`}
-                  >
-                    {isSendingOtp ? 'Sending...' : otpCountdown > 0 ? `Resend (${otpCountdown}s)` : 'Send OTP'}
-                  </button>
+            ) : (
+              /* CHANGE PASSWORD VIA OTP VIEW (Triggered from Login Screen) */
+              <div className="p-4 sm:p-6 max-w-lg mx-auto text-center space-y-4 m-auto w-full pb-8">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-[#15803d] flex items-center justify-center mx-auto border border-emerald-300 shadow-sm">
+                  <Key className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">
+                    Reset & Change Admin Password
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed mt-1">
+                    Verification OTP is dispatched directly to registered factory phone: <strong className="text-slate-900 font-bold">+91 9182879375</strong>.
+                  </p>
                 </div>
 
-                {otpSentNotice && (
-                  <div className="text-[11px] text-emerald-800 bg-white p-2.5 rounded-lg border border-emerald-200 space-y-1.5">
-                    <p className="font-semibold flex items-center gap-1 text-emerald-900">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>{otpSentNotice}</span>
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                {/* Step 1: Request OTP Box */}
+                <div className="bg-emerald-50/90 p-4 rounded-xl border border-emerald-200 text-left space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-[#15803d]" />
+                        Registered Phone: +91 9182879375
+                      </span>
+                      <span className="text-[11px] text-emerald-800/80 block mt-0.5">
+                        Owner: Barri Jayanth (VD Paper Plates)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      disabled={isSendingOtp || otpCountdown > 0}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        otpCountdown > 0
+                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                          : 'bg-[#15803d] text-white hover:bg-[#166534] shadow-xs active:scale-95'
+                      }`}
+                    >
+                      {isSendingOtp ? 'Sending OTP...' : otpCountdown > 0 ? `Resend OTP (${otpCountdown}s)` : 'Send OTP to 9182879375'}
+                    </button>
+                  </div>
+
+                  {/* Highlighted OTP Display & Auto-Fill when generated */}
+                  {receivedOtpCode && (
+                    <div className="bg-white p-3 rounded-xl border-2 border-emerald-400 shadow-xs flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 block">
+                          Generated OTP Code
+                        </span>
+                        <span className="font-mono text-xl font-black text-emerald-950 tracking-widest">
+                          {receivedOtpCode}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setOtpCode(receivedOtpCode)}
+                        className="px-3 py-1.5 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>Auto-Fill OTP</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {otpSentNotice && (
+                    <div className="text-xs text-emerald-900 bg-white/90 p-3 rounded-lg border border-emerald-200 space-y-2">
+                      <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>{otpSentNotice}</span>
+                      </p>
                       {otpWhatsAppUrl && (
                         <a
                           href={otpWhatsAppUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#15803d] hover:underline"
+                          className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
                         >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>View on WhatsApp (9182879375)</span>
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Open WhatsApp on 9182879375 to View OTP</span>
                         </a>
                       )}
-                      {sandboxOtpPreview && (
-                        <span className="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded">
-                          (Preview OTP: <strong>{sandboxOtpPreview}</strong>)
-                        </span>
-                      )}
+                      <div className="text-[10px] text-slate-500 leading-normal pt-0.5">
+                        • Dispatched directly to WhatsApp on <strong className="text-slate-700">+91 9182879375</strong><br />
+                        • Security notification sent to <strong className="text-slate-700">barrijayanth@gmail.com</strong>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Step 2: Password Update Form */}
+                <form onSubmit={handleVerifyOtpAndChangePassword} className="space-y-3.5 text-left pt-1">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Enter 6-Digit OTP Code *
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="e.g. 123456"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono text-center tracking-widest text-lg font-bold focus:bg-white focus:outline-[#15803d]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      New Admin Password *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        placeholder="Enter new administrator password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-[#15803d]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Password update form */}
-              <form onSubmit={handleVerifyOtpAndChangePassword} className="space-y-3 text-left pt-1">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Enter 6-Digit OTP Code
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    placeholder="e.g. 123456"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono text-center tracking-widest text-base font-bold focus:outline-[#15803d]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    New Admin Password
-                  </label>
-                  <div className="relative">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Confirm New Password *
+                    </label>
                     <input
-                      type={showNewPassword ? 'text' : 'password'}
-                      placeholder="Enter new administrator password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full pl-3.5 pr-10 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-[#15803d]"
+                      type="password"
+                      placeholder="Re-enter new administrator password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-[#15803d]"
                     />
+                  </div>
+
+                  {otpError && (
+                    <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl font-semibold flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>{otpError}</span>
+                    </div>
+                  )}
+
+                  {changePasswordSuccess && (
+                    <div className="text-xs text-emerald-900 bg-emerald-50 border border-emerald-300 p-4 rounded-xl font-bold space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+                        <span>{changePasswordSuccess}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleReturnAfterPasswordChange}
+                        className="w-full py-2 px-3 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Go to Login Screen Now</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* STEP 3: SUBMIT BUTTON - Always visible & scrollable */}
+                  <div className="pt-2 space-y-2">
+                    <button
+                      id="admin-verify-otp-submit-btn"
+                      type="submit"
+                      disabled={isUpdatingPassword}
+                      className="w-full py-3.5 px-5 rounded-xl bg-[#15803d] hover:bg-[#166534] active:bg-[#14532d] text-white font-extrabold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 border border-emerald-400/40"
+                    >
+                      {isUpdatingPassword ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>Verifying OTP & Updating Password...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span>Verify OTP & Update Password</span>
+                        </>
+                      )}
+                    </button>
+
                     <button
                       type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                      onClick={() => {
+                        setIsChangePasswordView(false);
+                        setOtpError('');
+                      }}
+                      className="w-full py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                     >
-                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Login</span>
                     </button>
                   </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Re-enter new administrator password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-[#15803d]"
-                  />
-                </div>
-
-                {otpError && (
-                  <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg font-semibold flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                    <span>{otpError}</span>
-                  </div>
-                )}
-
-                {changePasswordSuccess && (
-                  <div className="text-xs text-emerald-900 bg-emerald-50 border border-emerald-300 p-3 rounded-xl font-bold flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
-                    <span>{changePasswordSuccess}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isUpdatingPassword}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#15803d] hover:bg-[#166534] text-white font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-                >
-                  {isUpdatingPassword ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Verifying OTP & Updating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Verify OTP & Update Password</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsChangePasswordView(false);
-                    setOtpError('');
-                  }}
-                  className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1 cursor-pointer transition-colors"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to Login</span>
-                </button>
-              </form>
-            </div>
-          )
+                </form>
+              </div>
+            )}
+          </div>
         ) : (
           /* MAIN ADMIN VIEW */
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -1028,14 +1102,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
 
                         {/* Preview */}
-                        <div className="w-full h-36 my-3 flex items-center justify-center bg-slate-50 rounded-lg p-2 border border-slate-100">
+                        <div className="w-full h-36 my-3 flex items-center justify-center bg-black rounded-xl overflow-hidden border border-neutral-800">
                           <PlateVisual
                             code={plate.code}
                             shape={plate.shape}
                             name={plate.name}
                             imageFileName={plate.imageFileName}
                             customImageUrl={plate.imageUrl}
-                            className="w-full h-full max-h-32"
+                            className="w-full h-full"
                           />
                         </div>
 
@@ -1050,21 +1124,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleOpenEditPlate(plate)}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <label
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#15803d] border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Upload new photo for this plate"
                         >
-                          <Edit2 className="w-3 h-3" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => onDeletePlate(plate.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
-                          title="Delete plate"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>{uploadingPlateId === plate.id ? 'Uploading...' : 'Change Photo'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={uploadingPlateId === plate.id}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingPlateId(plate.id);
+                              const reader = new FileReader();
+                              reader.onload = async () => {
+                                const base64 = reader.result as string;
+                                if (onUploadPlatePhoto) {
+                                  await onUploadPlatePhoto(plate.id, base64, file.name);
+                                } else {
+                                  onUpdatePlate(plate.id, { imageUrl: base64 });
+                                }
+                                setUploadingPlateId(null);
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditPlate(plate)}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => onDeletePlate(plate.id)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                            title="Delete plate"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1114,29 +1220,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </button>
                       </div>
 
+                      {/* Highlighted OTP Display & Auto-Fill when generated */}
+                      {receivedOtpCode && (
+                        <div className="bg-white p-3 rounded-xl border-2 border-emerald-400 shadow-xs flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 block">
+                              Generated OTP Code
+                            </span>
+                            <span className="font-mono text-xl font-black text-emerald-950 tracking-widest">
+                              {receivedOtpCode}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setOtpCode(receivedOtpCode)}
+                            className="px-3 py-1.5 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold shadow-xs transition-transform active:scale-95 cursor-pointer flex items-center gap-1"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>Auto-Fill OTP</span>
+                          </button>
+                        </div>
+                      )}
+
                       {otpSentNotice && (
-                        <div className="text-xs text-emerald-900 bg-white p-3 rounded-lg border border-emerald-200 space-y-1.5">
-                          <p className="font-semibold flex items-center gap-1.5">
+                        <div className="text-xs text-emerald-900 bg-white p-3.5 rounded-xl border border-emerald-200 space-y-2">
+                          <p className="font-semibold flex items-center gap-1.5 text-emerald-950">
                             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span>{otpSentNotice}</span>
                           </p>
-                          <div className="flex flex-wrap items-center gap-2 pt-1">
-                            {otpWhatsAppUrl && (
-                              <a
-                                href={otpWhatsAppUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#15803d] hover:underline"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                                <span>Open WhatsApp (9182879375)</span>
-                              </a>
-                            )}
-                            {sandboxOtpPreview && (
-                              <span className="text-[11px] text-slate-600 font-mono bg-slate-100 px-2 py-0.5 rounded">
-                                Preview OTP: <strong>{sandboxOtpPreview}</strong>
-                              </span>
-                            )}
+                          {otpWhatsAppUrl && (
+                            <a
+                              href={otpWhatsAppUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                              <span>Open WhatsApp on 9182879375 to View OTP</span>
+                            </a>
+                          )}
+                          <div className="text-[11px] text-slate-500 leading-normal pt-0.5">
+                            • Dispatched directly to WhatsApp on <strong className="text-slate-700">+91 9182879375</strong><br />
+                            • Security alert also emailed to <strong className="text-slate-700">barrijayanth@gmail.com</strong>
                           </div>
                         </div>
                       )}
@@ -1203,9 +1328,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       )}
 
                       {changePasswordSuccess && (
-                        <div className="text-xs text-emerald-900 bg-emerald-50 border border-emerald-300 p-3.5 rounded-xl font-bold flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
-                          <span>{changePasswordSuccess}</span>
+                        <div className="text-xs text-emerald-900 bg-emerald-50 border border-emerald-300 p-4 rounded-xl font-bold space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+                            <span>{changePasswordSuccess}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleReturnAfterPasswordChange}
+                            className="w-full py-2 px-3 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span>Return to Customer Orders Now</span>
+                          </button>
                         </div>
                       )}
 

@@ -14,6 +14,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { OrderTrackerModal } from './components/OrderTrackerModal';
 import { LocationAndContactSection } from './components/LocationAndContactSection';
 import { PolicyRequirementsSection } from './components/PolicyRequirementsSection';
+import { WhyChooseUsSection } from './components/WhyChooseUsSection';
 
 export default function App() {
   const [plates, setPlates] = useState<PaperPlate[]>(INITIAL_PLATES);
@@ -130,6 +131,37 @@ export default function App() {
     }
   };
 
+  const handleUploadPlatePhoto = async (plateId: string, imageBase64: string, fileName?: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/upload-plate-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plateId, imageBase64, fileName })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updatedUrl = data.imageUrl || imageBase64;
+        setPlates((prev) =>
+          prev.map((p) =>
+            p.id === plateId
+              ? {
+                  ...p,
+                  imageUrl: updatedUrl,
+                  imageFileName: data.product?.imageFileName || p.imageFileName
+                }
+              : p
+          )
+        );
+        setShowNotification('✓ Real plate photo applied successfully!');
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+      setShowNotification('Failed to upload image. Please try again.');
+    }
+    return false;
+  };
+
   const handleUpdateOrderStatus = async (
     orderId: string,
     newStatus: CustomerOrder['status'],
@@ -212,6 +244,12 @@ export default function App() {
 
         {/* Schedule Requirement, Minimum Quantity & Payment Terms (At the Bottom of Product Catalog) */}
         <PolicyRequirementsSection
+          storeInfo={storeInfo}
+          onOpenOrder={() => setIsOrderModalOpen(true)}
+        />
+
+        {/* Why Choose Us - Direct Factory Advantages, Fake Data Metrics, Savings Calculator & Side-by-Side Comparison */}
+        <WhyChooseUsSection
           storeInfo={storeInfo}
           onOpenOrder={() => setIsOrderModalOpen(true)}
         />
@@ -327,6 +365,7 @@ export default function App() {
         onUpdatePlate={handleUpdatePlate}
         onDeletePlate={handleDeletePlate}
         onUpdateOrderStatus={handleUpdateOrderStatus}
+        onUploadPlatePhoto={handleUploadPlatePhoto}
       />
 
       {/* 4. Customer Order Tracking */}

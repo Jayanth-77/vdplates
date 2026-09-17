@@ -45,6 +45,7 @@ interface PaperPlate {
   pattern: string;
   description: string;
   imageFileName: string;
+  imageUrl?: string;
   inStock: boolean;
   size: string;
   badge?: string;
@@ -57,77 +58,90 @@ let products: PaperPlate[] = [
     code: 'plate1',
     price: 1.90,
     shape: 'Square',
-    pattern: 'Vibrant Tropical Leaf Print',
+    pattern: 'Vibrant Tropical Green Leaf Pattern',
     description: 'High-durability square paper plate with laminated tropical monstera foliage print. Grease-resistant and ideal for meals and buffets.',
-    imageFileName: 'plate1.jpg.jpeg',
+    imageFileName: 'product-01-green-leaf.png',
     inStock: true,
     size: '11" x 11"',
     badge: 'Popular'
   },
   {
     id: 'plate-2',
-    name: 'Green Leaf Round Classic Plate',
+    name: 'Deep Green Banana Leaf Square Plate',
     code: 'plate2',
     price: 1.90,
-    shape: 'Round',
-    pattern: 'Lush Botanical Leaves Pattern',
-    description: 'Round dining plate printed with lush green leaves design and smooth curved edges. Perfect for weddings, catering, and party servings.',
-    imageFileName: 'plate2.jpg.jpeg',
+    shape: 'Square',
+    pattern: 'Deep Green Banana Leaf with Central Stem',
+    description: 'Square dining plate printed with authentic fresh banana leaf design and smooth curved edges. Perfect for weddings, catering, and party servings.',
+    imageFileName: 'product-02-banana-leaf-green.png',
     inStock: true,
-    size: '12" Round',
+    size: '11" x 11"',
     badge: 'Best for Events'
   },
   {
     id: 'plate-3',
-    name: 'Golden Sunburst Square Plate',
+    name: 'Golden Orange Floral Leaf Square Plate',
     code: 'plate3',
     price: 1.90,
     shape: 'Square',
     pattern: 'Warm Golden Floral Leaf Motif',
-    description: 'Square festive paper plate adorned with a glowing golden-yellow leaf curve pattern. Adds elegance to religious functions and celebrations.',
-    imageFileName: 'plate3.jpg.jpeg',
+    description: 'Square festive paper plate adorned with a glowing golden-yellow and warm orange leaf curve pattern. Adds elegance to religious functions and celebrations.',
+    imageFileName: 'product-03-golden-orange.png',
     inStock: true,
     size: '11" x 11"',
     badge: 'Festive Special'
   },
   {
     id: 'plate-4',
-    name: 'Traditional Banana Leaf Square Plate',
+    name: 'Red & Green Festive Foliage Square Plate',
     code: 'plate4',
     price: 1.85,
     shape: 'Square',
-    pattern: 'Deep Green Banana Leaf with Central Stem',
-    description: 'Authentic South Indian feast appearance with vibrant banana leaf linear veins. Heavy-duty coated board prevents sogginess.',
-    imageFileName: 'plate4.jpg.jpeg',
+    pattern: 'Red and Green Leaf Festive Foliage',
+    description: 'Authentic South Indian feast appearance with vibrant red and forest green foliage. Heavy-duty coated board prevents sogginess.',
+    imageFileName: 'product-04-red-green-leaf.png',
     inStock: true,
     size: '11" x 11"',
     badge: 'Traditional Dining'
   },
   {
     id: 'plate-5',
-    name: 'Traditional Banana Leaf Round Plate',
+    name: 'Orange & Green Botanical Leaf Square Plate',
     code: 'plate5',
     price: 1.80,
-    shape: 'Round',
-    pattern: 'Realistic Fresh Banana Leaf Ribs',
-    description: 'Classic round banana leaf paper plate. Eco-conscious laminated finish suitable for full-course meals, tiffins, and festivals.',
-    imageFileName: 'plate5.jpg.jpeg',
+    shape: 'Square',
+    pattern: 'Orange and Green Botanical Foliage',
+    description: 'Classic botanical orange and green leaf paper plate. Eco-conscious laminated finish suitable for full-course meals, tiffins, and festivals.',
+    imageFileName: 'product-05-orange-green-leaf.png',
     inStock: true,
-    size: '12" Round',
+    size: '11" x 11"',
     badge: 'Value Pack'
   },
   {
     id: 'plate-6',
-    name: 'Silver Metallic Fluted Snack Plate',
+    name: 'Sunny Yellow Botanical Leaf Square Plate',
     code: 'plate6',
-    price: 0.90,
-    shape: 'Round',
-    pattern: 'Embossed Metallic Silver Foil Rim',
-    description: 'Sturdy silver foil laminated snack plate / katori bowl with decorative fluted ridges. Ideal for prasadam, snacks, desserts, and side items.',
-    imageFileName: 'plate6.jpg.jpeg',
+    price: 1.80,
+    shape: 'Square',
+    pattern: 'Sunny Yellow Botanical Contour Leaf Motif',
+    description: 'Sturdy dining plate with vibrant yellow base and elegant green botanical contours. Ideal for snacks, desserts, meals, and celebration items.',
+    imageFileName: 'product-06-yellow-leaf.png',
     inStock: true,
-    size: '7" Round',
+    size: '11" x 11"',
     badge: 'Budget Friendly'
+  },
+  {
+    id: 'plate-7',
+    name: 'Sage Green Botanical Leaf Square Plate',
+    code: 'plate7',
+    price: 1.90,
+    shape: 'Square',
+    pattern: 'Sage Green Stitch Botanical Leaf Motif',
+    description: 'Square dining paper plate featuring premium sage green leaf contours with running-stitch accents. Heavy-duty construction for caterers and festive meals.',
+    imageFileName: 'product-07-sage-green-leaf.png',
+    inStock: true,
+    size: '11" x 11"',
+    badge: 'New Design'
   }
 ];
 
@@ -413,7 +427,7 @@ app.post('/api/products', (req, res) => {
       shape: shape || 'Round',
       pattern: pattern || 'Standard Finish',
       description: description || 'High quality paper plate manufactured by VD PAPER PLATES.',
-      imageFileName: imageFileName || 'plate1.jpg.jpeg',
+      imageFileName: imageFileName || 'product-01-green-leaf.png',
       inStock: inStock !== undefined ? Boolean(inStock) : true,
       size: size || '11" Standard',
       badge: badge || 'New'
@@ -439,6 +453,57 @@ app.delete('/api/products/:id', (req, res) => {
   const { id } = req.params;
   products = products.filter(p => p.id !== id);
   res.json({ success: true });
+});
+
+// API: Upload custom/real photo for any plate
+app.post('/api/upload-plate-photo', (req, res) => {
+  try {
+    const { plateId, imageBase64, fileName } = req.body;
+    if (!plateId || !imageBase64) {
+      return res.status(400).json({ error: 'plateId and imageBase64 are required' });
+    }
+
+    const matches = imageBase64.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    const ext = matches ? matches[1].replace('jpeg', 'jpg') : 'png';
+    const base64Data = matches ? matches[2] : imageBase64;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const cleanFileName = fileName || `${plateId}-${Date.now()}.${ext}`;
+    const publicTarget = path.join(process.cwd(), 'public', 'product-images', cleanFileName);
+    const distTarget = path.join(process.cwd(), 'dist', 'product-images', cleanFileName);
+
+    fs.mkdirSync(path.dirname(publicTarget), { recursive: true });
+    fs.writeFileSync(publicTarget, buffer);
+
+    if (fs.existsSync(path.dirname(distTarget))) {
+      fs.writeFileSync(distTarget, buffer);
+    }
+
+    // Also write to public root if needed
+    const publicRootTarget = path.join(process.cwd(), 'public', cleanFileName);
+    fs.writeFileSync(publicRootTarget, buffer);
+    const distRootTarget = path.join(process.cwd(), 'dist', cleanFileName);
+    if (fs.existsSync(path.dirname(distRootTarget))) {
+      fs.writeFileSync(distRootTarget, buffer);
+    }
+
+    const timestamp = Date.now();
+    const newImageUrl = `/product-images/${cleanFileName}?t=${timestamp}`;
+
+    // Update product in memory
+    const index = products.findIndex(p => p.id === plateId);
+    if (index !== -1) {
+      products[index].imageFileName = cleanFileName;
+      products[index].imageUrl = newImageUrl;
+      console.log(`[PHOTO UPLOAD] Updated plate ${plateId} image to ${cleanFileName}`);
+      return res.json({ success: true, product: products[index], imageUrl: newImageUrl });
+    }
+
+    res.json({ success: true, imageUrl: newImageUrl });
+  } catch (error: any) {
+    console.error('Failed to upload plate photo:', error);
+    res.status(500).json({ error: error?.message || 'Failed to process image' });
+  }
 });
 
 // API: Orders
@@ -766,6 +831,27 @@ app.post('/api/admin/request-otp', async (req, res) => {
     const waText = `[VD PAPER PLATES] Your Admin Password Reset OTP is: ${otpCode}. Valid for 10 minutes. Do not share this OTP with anyone.`;
     const whatsappUrl = `https://wa.me/91${targetPhone}?text=${encodeURIComponent(waText)}`;
 
+    // If Indian Fast2SMS or SMS gateway key is configured, send cellular SMS
+    if (process.env.FAST2SMS_API_KEY || process.env.SMS_API_KEY) {
+      try {
+        const apiKey = process.env.FAST2SMS_API_KEY || process.env.SMS_API_KEY;
+        await fetch('https://www.fast2sms.com/dev/bulkV2', {
+          method: 'POST',
+          headers: {
+            'authorization': apiKey!,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            route: 'otp',
+            variables_values: otpCode,
+            numbers: targetPhone
+          })
+        }).catch(e => console.warn('[SMS GATEWAY WARNING]:', e));
+      } catch (smsErr) {
+        console.warn('[SMS GATEWAY ERROR]:', smsErr);
+      }
+    }
+
     // Dispatch email notification to owner email (barrijayanth@gmail.com)
     sendAdminSecurityAlert(
       `[VD PAPER PLATES] Security Alert: OTP for Admin Password Change (${otpCode})`,
@@ -774,12 +860,11 @@ app.post('/api/admin/request-otp', async (req, res) => {
 
     res.json({
       success: true,
-      message: `OTP has been dispatched to registered mobile +91 ${targetPhone}`,
+      message: `OTP dispatched for registered mobile +91 ${targetPhone}`,
       targetPhone,
       expiresInSeconds: 600,
       whatsappUrl,
-      // Provide OTP in response for testing/verification in preview sandbox
-      otpPreviewCode: otpCode
+      otpCode
     });
   } catch (error: any) {
     console.error('Error in request-otp:', error);
@@ -883,6 +968,15 @@ Your job is to assist customers with inquiries about paper plates pricing, placi
 3. Payment & Advance Policy: A minimum of 20% advance payment is strictly required for order confirmation and slot reservation. The remaining 80% balance is payable upon delivery/pickup.
 4. Scanner / Account Payment & Manual Screenshot Verification: We do not use an automated third-party payment gateway. Customers pay via PhonePe QR scanner or transfer directly to Barri Jayanth's SBI account (A/C: 38621595047, UPI: barrijayanth@ybl). After making the transfer, the customer uploads their payment screenshot on the website. An instant notification is sent to the owner's email (barrijayanth@gmail.com) and the customer receives an official confirmation email.
 5. Delivery / Pickup: Available locally around Kotturu Mandal, Palakonda, Pathapatnam, Srikakulam district, and surrounding regions. Bulk transport can be arranged.
+
+=== WHY CHOOSE US / FACTORY ADVANTAGES ===
+- Ultra-Low Cost: Direct factory wholesale rates from ₹0.90/plate saving customers ~40% compared to middleman retail markups.
+- Heavy GSM Strength: 140 to 280 GSM heavy virgin food-grade board that resists sagging and rim collapse.
+- 45+ Minutes Zero-Leakage: Rigorously tested against hot sambar, spicy rasam, gravies, and biryani without soggy bottoms.
+- 100% Food Safe & Eco-Friendly: Chlorine-free, odorless, biodegradable in 60-90 days, safe for family banquets.
+- High Production Capacity: 50,000+ plates manufactured per day on high-speed hydraulic machines.
+- Flexible Mix-and-Match: Customers can combine any sizes/designs within the 400 minimum plate order.
+- Fresh Batches: Freshly die-cut 3 days ahead, sealed in sanitized 100-pc shrink packs (never dusty warehouse leftovers).
 
 === CURRENT PLATE VARIETIES & PRICES ===
 - Plate 1: Green Leaf Square Deluxe Plate = ₹1.90 per plate (11" Square with vibrant tropical monstera foliage print, grease resistant).
@@ -996,6 +1090,9 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Setup Vite or static serving
 async function startServer() {
+  const publicPath = path.join(process.cwd(), 'public');
+  app.use(express.static(publicPath));
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

@@ -68,6 +68,10 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
   const [selectedShape, setSelectedShape] = useState<'all' | 'Square' | 'Round'>('all');
   const [selectedPlateForQuickView, setSelectedPlateForQuickView] = useState<PaperPlate | null>(null);
 
+  const quickViewPlate = selectedPlateForQuickView
+    ? plates.find(p => p.id === selectedPlateForQuickView.id) || selectedPlateForQuickView
+    : null;
+
   const filteredPlates = plates.filter(plate => {
     if (selectedShape === 'all') return true;
     return plate.shape === selectedShape;
@@ -93,7 +97,7 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
           Choose Your <span className="text-[#16a34a]">Perfect Plate</span>
         </h2>
         <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-          We offer 6 distinct types of heavy-duty paper plates to suit all your dining, catering, and event needs.
+          We offer 7 distinct types of heavy-duty paper plates to suit all your dining, catering, and event needs.
         </p>
 
         {/* Shape Filter Pills in Soft Green Theme */}
@@ -133,6 +137,22 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
 
       {/* Grid of 3D Floating Product Cards matching Reference Image */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        {filteredPlates.length === 0 && (
+          <div className="col-span-full py-12 px-6 text-center bg-emerald-50/70 rounded-3xl border border-emerald-100 max-w-lg mx-auto">
+            <Layers className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
+            <h3 className="font-bold text-[#143820] text-base font-['Outfit']">All Current Varieties are 11" Square Plates</h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Our heavy-duty hot-press machinery currently crafts all 7 catalog designs in 11" x 11" Square shape. Round shapes can be custom-manufactured for large event/catering orders (5,000+ units).
+            </p>
+            <button
+              onClick={() => setSelectedShape('all')}
+              className="mt-4 px-5 py-2 rounded-full bg-[#15803d] text-white text-xs font-bold hover:bg-[#166534] transition-colors cursor-pointer shadow-xs"
+            >
+              View All 7 Plates
+            </button>
+          </div>
+        )}
+
         {filteredPlates.map((plate, idx) => {
           const qty = getQuantityInCart(plate.id);
           const isSelected = qty > 0;
@@ -159,29 +179,20 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
                   </span>
                 </div>
 
-                {/* 3D Floating Plate Stage with Soft Shadow */}
+                {/* Plate Product Stage with Black Background and Centered Contain */}
                 <div
                   onClick={() => setSelectedPlateForQuickView(plate)}
-                  className="relative aspect-square max-w-[240px] mx-auto mb-5 flex items-center justify-center cursor-pointer select-none"
+                  className="relative aspect-square max-w-[240px] w-full mx-auto mb-5 rounded-2xl bg-black overflow-hidden flex items-center justify-center cursor-pointer select-none shadow-md border border-neutral-900 transition-transform duration-300 group-hover:scale-[1.02]"
                   title="Click to view details"
                 >
-                  {/* Subtle Background Radial Glow */}
-                  <div className="absolute inset-2 rounded-full bg-white/70 shadow-inner opacity-80" />
-
-                  {/* 3D Plate Visual with Scale on Hover */}
-                  <div className="relative z-10 w-full h-full p-3 flex items-center justify-center transition-transform duration-500 ease-out group-hover:scale-108 group-hover:-translate-y-1">
-                    <PlateVisual
-                      code={plate.code}
-                      shape={plate.shape}
-                      name={plate.name}
-                      imageFileName={plate.imageFileName}
-                      customImageUrl={plate.imageUrl}
-                      className="w-full h-full drop-shadow-xl"
-                    />
-                  </div>
-
-                  {/* Soft 3D Floor Shadow */}
-                  <div className="absolute bottom-2 left-10 right-10 h-6 bg-emerald-950/15 rounded-full blur-md transition-all duration-300 group-hover:scale-90 group-hover:opacity-70 pointer-events-none" />
+                  <PlateVisual
+                    code={plate.code}
+                    shape={plate.shape}
+                    name={plate.name}
+                    imageFileName={plate.imageFileName}
+                    customImageUrl={plate.imageUrl}
+                    className="w-full h-full"
+                  />
                 </div>
 
                 {/* Product Name & Short Description matching Reference */}
@@ -368,16 +379,16 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
       )}
 
       {/* Detail Quickview Modal */}
-      {selectedPlateForQuickView && (
+      {quickViewPlate && (
         <div className="fixed inset-0 z-50 bg-[#0d2818]/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[#fcfbf9] max-w-md w-full rounded-3xl shadow-2xl overflow-hidden border border-emerald-200 animate-in fade-in zoom-in-95">
             <div className="p-5 border-b border-emerald-100 flex items-center justify-between">
               <div>
                 <span className="text-xs font-black text-[#16a34a] uppercase tracking-wider">
-                  {selectedPlateForQuickView.code}
+                  {quickViewPlate.code}
                 </span>
                 <h3 className="font-extrabold text-[#143820] text-xl font-['Outfit']">
-                  {selectedPlateForQuickView.name}
+                  {quickViewPlate.name}
                 </h3>
               </div>
               <button
@@ -388,15 +399,15 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
               </button>
             </div>
 
-            <div className="p-8 bg-gradient-to-b from-[#eef8f2] to-[#fcfbf9] flex items-center justify-center border-b border-emerald-100">
-              <div className="w-60 h-60">
+            <div className="p-6 bg-black flex flex-col items-center justify-center border-b border-neutral-900">
+              <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
                 <PlateVisual
-                  code={selectedPlateForQuickView.code}
-                  shape={selectedPlateForQuickView.shape}
-                  name={selectedPlateForQuickView.name}
-                  imageFileName={selectedPlateForQuickView.imageFileName}
-                  customImageUrl={selectedPlateForQuickView.imageUrl}
-                  className="w-full h-full drop-shadow-2xl"
+                  code={quickViewPlate.code}
+                  shape={quickViewPlate.shape}
+                  name={quickViewPlate.name}
+                  imageFileName={quickViewPlate.imageFileName}
+                  customImageUrl={quickViewPlate.imageUrl}
+                  className="w-full h-full"
                 />
               </div>
             </div>
@@ -405,23 +416,23 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-600">Rate per plate:</span>
                 <span className="text-2xl font-black text-[#143820] font-['Outfit']">
-                  ₹{selectedPlateForQuickView.price.toFixed(2)}
+                  ₹{quickViewPlate.price.toFixed(2)}
                 </span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                {selectedPlateForQuickView.description}
+                {quickViewPlate.description}
               </p>
               <div className="grid grid-cols-2 gap-3 text-xs bg-white p-3.5 rounded-2xl border border-emerald-100 shadow-2xs">
                 <div>
                   <span className="text-slate-400 block">Shape & Dimensions</span>
                   <span className="font-bold text-[#143820]">
-                    {selectedPlateForQuickView.shape} ({selectedPlateForQuickView.size})
+                    {quickViewPlate.shape} ({quickViewPlate.size})
                   </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Pattern Design</span>
                   <span className="font-bold text-[#143820]">
-                    {selectedPlateForQuickView.pattern}
+                    {quickViewPlate.pattern}
                   </span>
                 </div>
               </div>
@@ -429,13 +440,13 @@ export const PlateCatalog: React.FC<PlateCatalogProps> = ({
               <div className="pt-2">
                 <button
                   onClick={() => {
-                    onUpdateCartQuantity(selectedPlateForQuickView, 400);
+                    onUpdateCartQuantity(quickViewPlate, 400);
                     setSelectedPlateForQuickView(null);
                   }}
                   className="w-full py-3.5 rounded-full bg-[#15803d] hover:bg-[#166534] text-white font-bold text-sm shadow-pill-green transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add 400 Plates (₹{(selectedPlateForQuickView.price * 400).toFixed(0)})</span>
+                  <span>Add 400 Plates (₹{(quickViewPlate.price * 400).toFixed(0)})</span>
                 </button>
               </div>
             </div>

@@ -7,6 +7,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
 import { CartItem, CustomerOrder, PaperPlate, StoreInfo } from '../types';
+import { PlateVisual } from './PlateVisual';
 
 interface OrderBookingModalProps {
   isOpen: boolean;
@@ -285,6 +286,16 @@ export const OrderBookingModal: React.FC<OrderBookingModalProps> = ({
                 <div className="divide-y divide-slate-200/80 mt-2 max-h-48 overflow-y-auto">
                   {cart.map((item) => (
                     <div key={item.plate.id} className="py-2.5 flex items-center justify-between gap-3 text-xs sm:text-sm">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-black shrink-0 border border-slate-200">
+                        <PlateVisual
+                          code={item.plate.code}
+                          shape={item.plate.shape}
+                          name={item.plate.name}
+                          imageFileName={item.plate.imageFileName}
+                          customImageUrl={item.plate.imageUrl}
+                          className="w-full h-full"
+                        />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <span className="font-semibold text-slate-900 block truncate">{item.plate.name}</span>
                         <span className="text-slate-500 text-xs block">

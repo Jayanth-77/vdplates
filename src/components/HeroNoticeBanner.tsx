@@ -174,30 +174,8 @@ export const HeroNoticeBanner: React.FC<HeroNoticeBannerProps> = ({
                 </svg>
               </div>
 
-              {/* Stacked Paper Plates Base in 3D Perspective (Front Right) */}
-              <div className="absolute bottom-7 right-3 sm:right-6 z-10 flex flex-col items-center">
-                {/* 3D Stacked Rim Layers */}
-                <div className="relative w-44 sm:w-52 h-20 flex items-center justify-center">
-                  {/* Bottom Shadow on Wood */}
-                  <div className="absolute bottom-0 w-44 h-8 bg-[#523315]/40 rounded-full blur-md" />
-
-                  {/* Multiple stacked plate edges */}
-                  <div className="absolute bottom-2 w-42 h-10 bg-[#e4cfb4] rounded-[50%] border-b-2 border-[#b89b77] shadow-sm" />
-                  <div className="absolute bottom-3 w-43 h-10 bg-[#f1e5d3] rounded-[50%] border-b-2 border-[#c2aa8a] shadow-sm" />
-                  <div className="absolute bottom-4.5 w-44 h-10 bg-[#faf4eb] rounded-[50%] border-b-2 border-[#d6c4aa] shadow-sm" />
-                  <div className="absolute bottom-6 w-44 sm:w-50 h-10 bg-white rounded-[50%] border-b border-amber-200 shadow-md flex items-center justify-center overflow-hidden">
-                    {/* Golden Sunburst rim pattern on top stack plate */}
-                    <div className="w-full h-full border-4 border-amber-300/80 rounded-[50%] flex items-center justify-center bg-gradient-to-r from-[#fff8e8] via-white to-[#fff5df]">
-                      <span className="text-[9px] font-extrabold text-amber-800/80 tracking-widest uppercase">
-                        Buffet Stack
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Foreground Hero Plate: Large Vibrant Tropical Green Leaf Plate */}
-              <div className="absolute top-2 sm:top-0 left-4 sm:left-6 z-15 w-56 sm:w-64 aspect-square animate-float-slow cursor-pointer" onClick={onScrollToCatalog}>
+              <div className="relative z-15 w-60 sm:w-72 aspect-square animate-float-slow cursor-pointer" onClick={onScrollToCatalog}>
                 {/* Floating Realistic Soft Drop Shadow */}
                 <div className="absolute -bottom-4 left-8 right-8 h-10 bg-emerald-950/20 rounded-full blur-xl transform scale-95" />
 
@@ -239,13 +217,6 @@ export const HeroNoticeBanner: React.FC<HeroNoticeBannerProps> = ({
                   <path d="M10 50 C15 30 30 15 50 10 C45 30 30 45 10 50 Z" fill="#1f7a33" />
                   <path d="M10 50 L48 12" stroke="#124f20" strokeWidth="1.5" />
                 </svg>
-              </div>
-
-              {/* Visual Carousel Indicators */}
-              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
-                <span className="w-6 h-2 rounded-full bg-[#15803d]" />
-                <span className="w-2 h-2 rounded-full bg-emerald-300" />
-                <span className="w-2 h-2 rounded-full bg-emerald-300" />
               </div>
             </div>
           </div>
